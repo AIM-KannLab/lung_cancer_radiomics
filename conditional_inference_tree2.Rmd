@@ -1,0 +1,196 @@
+---
+title: "conditional_inference_tree"
+output: html_document
+author: Nancy Zha
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Conditional Inference Tree
+Local failure free survival vs. histogram skewness
+```{r, message = FALSE, warning=FALSE}
+library(knitr)
+library(dplyr)
+library(car)
+library(tidyverse)
+library(partykit)
+library(survival)
+library(ggplot2)
+library(survminer)
+# install.packages('partykit', dependencies = TRUE, INSTALL_opts = '--no-lock')
+```
+
+### Locoregional Failure Free Survival
+```{r}
+# import data
+df_new = read.csv('/Users/yuhelin/Desktop/University/2022 Post-Fall/Kann Lab/Lung Cancer/binCount=64/df_new.csv')
+#df_new$Local_failure = factor(df_new$Local_failure)
+```
+
+
+```{r}
+ctree_model = ctree(Local_failure ~ original_firstorder_Skewness, data = df_new)
+ctree_model
+```
+
+```{r}
+plot(ctree_model, main="Conditional Inference Tree with Skewness")
+```
+n = 19: original_firstorder_Skewness > 0.973, high risk group
+n = 28: original_firstorder_Skewness <= 0.973, low risk group
+
+```{r}
+# Output to be present as PNG file
+png(file = "conditionalClassification.png",
+width = 1200, height = 400)
+  
+# Plotting graph
+plot(ctree_model)
+  
+# Save the file
+dev.off()
+```
+
+```{r}
+df_new$original_firstorder_Skewness_status = NA
+df_new$original_firstorder_Skewness_status[df_new$original_firstorder_Skewness > 0.973] <- 1
+df_new$original_firstorder_Skewness_status[df_new$original_firstorder_Skewness <= 0.973] <- 0
+```
+
+```{r}
+# Kaplan–Maier plot
+s1 <- survfit(Surv(Local_failure_days, Local_failure) ~ original_firstorder_Skewness_status, data = df_new)
+s1
+```
+```{r}
+ggsurvplot(
+  s1,
+  data = df_new,
+  size = 1,                 # change line size
+  palette =
+    c("#E7B800", "#2E9FDF"),# custom color palettes
+  conf.int = TRUE,          # Add confidence interval
+  pval = TRUE,              # Add p-value
+  risk.table = TRUE,        # Add risk table
+  risk.table.col = "strata",# Risk table color by groups
+  legend.labs =
+    c("Skewness ratio <= 0.973", "Skewness ratio > 0.973"),    # Change legend labels
+  risk.table.height = 0.25, # Useful to change when you have multiple groups
+  ggtheme = theme_bw()    # Change ggplot2 theme
+)
+# title("Locoregional Failure Free Survival with Skewness")
+```
+p_val = 0.098, no significant different LPFS between two groups.
+
+### test cut-off point for skewness ratio F5/F1 = 0.951
+```{r}
+# test cut-off point for skewness ratio F5/F1 = 0.951
+df_new$original_firstorder_Skewness_cutoff = NA
+df_new$original_firstorder_Skewness_cutoff[df_new$original_firstorder_Skewness > 0.951] <- 1
+df_new$original_firstorder_Skewness_cutoff[df_new$original_firstorder_Skewness <= 0.951] <- 0
+```
+
+```{r}
+# Kaplan–Maier plot
+s2 <- survfit(Surv(Local_failure_days, Local_failure) ~ original_firstorder_Skewness_cutoff, data = df_new)
+s2
+```
+
+```{r}
+ggsurvplot(
+  s2,
+  data = df_new,
+  size = 1,                 # change line size
+  palette =
+    c("#E7B800", "#2E9FDF"),# custom color palettes
+  conf.int = TRUE,          # Add confidence interval
+  pval = TRUE,              # Add p-value
+  risk.table = TRUE,        # Add risk table
+  risk.table.col = "strata",# Risk table color by groups
+  legend.labs =
+    c("Skewness ratio <= 0.951", "Skewness ratio > 0.951"),    # Change legend labels
+  risk.table.height = 0.25, # Useful to change when you have multiple groups
+  ggtheme = theme_bw()      # Change ggplot2 theme
+)
+```
+
+column YZ: In-field locoregional recurrence. 4 cases vs. 43 cases
+
+```{r}
+# import data
+df_new2 = read.csv('/Users/yuhelin/Desktop/University/2022 Post-Fall/Kann Lab/Lung Cancer/binCount=64/df_new2.csv')
+df_new2
+```
+
+```{r}
+# test cut-off point for skewness ratio F5/F1 = 0.951
+df_new2$original_firstorder_Skewness_cutoff = NA
+df_new2$original_firstorder_Skewness_cutoff[df_new2$original_firstorder_Skewness > 0.951] <- 1
+df_new2$original_firstorder_Skewness_cutoff[df_new2$original_firstorder_Skewness <= 0.951] <- 0
+```
+
+```{r}
+# Kaplan–Maier plot
+s1 <- survfit(Surv(In_field_locoregional_recurrence_time, In_field_locoregional_recurrence) ~ original_firstorder_Skewness_cutoff, data = df_new2)
+s1
+```
+
+```{r}
+ggsurvplot(
+  s1,
+  data = df_new2,
+  size = 1,                 # change line size
+  palette =
+    c("#E7B800", "#2E9FDF"),# custom color palettes
+  conf.int = TRUE,          # Add confidence interval
+  pval = TRUE,              # Add p-value
+  risk.table = TRUE,        # Add risk table
+  risk.table.col = "strata",# Risk table color by groups
+  legend.labs =
+    c("Skewness ratio <= 0.951", "Skewness ratio > 0.951"),    # Change legend labels
+  risk.table.height = 0.25, # Useful to change when you have multiple groups
+  ggtheme = theme_bw()      # Change ggplot2 theme
+)
+```
+
+### ANCOVA for F1 and F5 comparing local-progressors versus non-local progressors for skewness variability
+
+df_new = f5_f1_ratio[f1_fea_new2.columns]
+df_new['Local_failure'] = f1['Local_failure']
+df_new['Local_failure_days'] = f1['Local_failure_days']
+df_new.to_csv('/Users/yuhelin/Desktop/University/2022 Post-Fall/Kann Lab/Lung Cancer/binCount=64/df_new.csv')
+
+survival_df contains all fraction values of skewness
+survival_df.to_csv("/Users/yuhelin/Desktop/University/2022 Post-Fall/Kann Lab/Lung Cancer/binCount=64/survival_df.csv")
+```{r}
+# import data
+df_new = read.csv('/Users/yuhelin/Desktop/University/2022 Post-Fall/Kann Lab/Lung Cancer/binCount=64/df_new.csv')
+#df_new$Local_failure = factor(df_new$Local_failure)
+df_new
+```
+
+```{r}
+survival_df = read.csv('/Users/yuhelin/Desktop/University/2022 Post-Fall/Kann Lab/Lung Cancer/binCount=64/survival_df.csv')
+survival_df
+```
+
+```{r}
+# ANCOVA
+survival_df$relative_f5_f1 <- (survival_df$f5 - survival_df$f1)/survival_df$f1
+# Fit ANCOVA model
+model <- lm(relative_f5_f1 ~ Local_failure + f1, data = survival_df)
+anova_result <- anova(model)
+print(anova_result)
+```
+The significant p-value for Local_failure indicates that there are significant differences in relative_f5_f1 between local-progressors and non-local progressors.
+f1 and f5 do not have a significant effect on relative_f5_f1 in this model.
+
+
+
+
+
+
+
+
